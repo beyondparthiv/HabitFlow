@@ -9,7 +9,7 @@ import {
   todayISO,
   weekdayLetter,
 } from "@/lib/utils/dates";
-import type { Category, Habit } from "@/lib/types";
+import type { Habit } from "@/lib/types";
 import { AddHabitForm } from "@/components/AddHabitForm";
 import { MonthNav } from "@/components/MonthNav";
 import { HabitRow } from "@/components/HabitRow";
@@ -119,7 +119,7 @@ export function HabitGrid({
   );
 
   const addHabit = useCallback(
-    async (name: string, category: Category) => {
+    async (name: string, category: string) => {
       const position = habits.length;
       const { data, error } = await supabase
         .from("habits")

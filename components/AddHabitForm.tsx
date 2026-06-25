@@ -15,21 +15,30 @@ import { CATEGORIES, type Category } from "@/lib/types";
 export function AddHabitForm({
   onAdd,
 }: {
-  onAdd: (name: string, category: Category) => Promise<void> | void;
+  onAdd: (name: string, category: string) => Promise<void> | void;
 }) {
   const [name, setName] = useState("");
   const [category, setCategory] = useState<Category>("Personal");
+  const [customLabel, setCustomLabel] = useState("");
   const [busy, setBusy] = useState(false);
+
+  const isCustom = category === "Custom";
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const trimmed = name.trim();
     if (!trimmed || busy) return;
+
+    // When "Custom" is chosen, use the typed label (fall back to "Custom").
+    const resolvedCategory =
+      isCustom && customLabel.trim() ? customLabel.trim() : category;
+
     setBusy(true);
     try {
-      await onAdd(trimmed, category);
+      await onAdd(trimmed, resolvedCategory);
       setName("");
       setCategory("Personal");
+      setCustomLabel("");
     } finally {
       setBusy(false);
     }
@@ -56,6 +65,18 @@ export function AddHabitForm({
           ))}
         </SelectContent>
       </Select>
+
+      {isCustom && (
+        <Input
+          value={customLabel}
+          onChange={(e) => setCustomLabel(e.target.value)}
+          placeholder="Custom type…"
+          className="h-9 w-36"
+          maxLength={24}
+          autoFocus
+        />
+      )}
+
       <Button type="submit" size="sm" disabled={busy || !name.trim()}>
         Add habit
       </Button>
