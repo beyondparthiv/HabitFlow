@@ -128,3 +128,15 @@
     @apply font-sans;
   }
 }
+
+/* Habit grid column sizing — narrower on phones so more days fit on screen. */
+:root {
+  --label-col: 13rem;
+  --day-col: 2rem;
+}
+@media (max-width: 640px) {
+  :root {
+    --label-col: 8.5rem;
+    --day-col: 1.75rem;
+  }
+}
