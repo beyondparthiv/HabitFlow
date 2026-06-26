@@ -35,7 +35,8 @@ export interface Habit {
   id: string;
   user_id: string;
   name: string;
-  category: Category;
+  /** One of the preset CATEGORIES, or a user-defined custom label. */
+  category: string;
   position: number;
   pinned: boolean;
   archived: boolean;
