@@ -113,13 +113,17 @@ export function HabitRow({
       {days.map((iso) => {
         const isFuture = iso > today;
         const isBeforeStart = iso < startISO;
+        const isToday = iso === today;
         const done = !!doneMap[iso];
         const locked = isFuture || isBeforeStart;
 
         return (
           <div
             key={iso}
-            className="flex items-center justify-center border-b border-r p-0.5"
+            className={cn(
+              "flex items-center justify-center border-b border-r p-0.5",
+              isToday && "bg-primary/5",
+            )}
           >
             <button
               disabled={locked}
@@ -127,15 +131,17 @@ export function HabitRow({
               aria-label={`${habit.name} on ${iso}${done ? " (done)" : ""}`}
               aria-pressed={done}
               className={cn(
-                "flex h-6 w-6 items-center justify-center rounded-md text-xs transition-colors sm:h-7 sm:w-7",
+                "flex h-6 w-6 items-center justify-center rounded-lg text-xs font-semibold transition-all duration-150 sm:h-7 sm:w-7",
+                "active:scale-90",
                 isBeforeStart && "cursor-not-allowed bg-muted/40",
                 isFuture && "cursor-not-allowed opacity-40",
                 !locked &&
                   !done &&
-                  "border border-border hover:bg-primary/15",
+                  "border border-border hover:border-primary hover:bg-primary/10",
                 !locked &&
                   done &&
-                  "bg-primary text-primary-foreground hover:bg-primary/90",
+                  "bg-primary text-primary-foreground shadow-sm hover:bg-primary/90",
+                isToday && !locked && "ring-2 ring-primary/40",
               )}
             >
               {done ? "✓" : ""}
