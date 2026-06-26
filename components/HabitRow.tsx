@@ -5,12 +5,14 @@ import { dayOfMonth } from "@/lib/utils/dates";
 import { isoDateOf } from "@/lib/utils/dates";
 import type { Habit } from "@/lib/types";
 import { cn } from "@/lib/utils";
+import { StreakBadge } from "@/components/StreakBadge";
 
 export function HabitRow({
   habit,
   days,
   today,
   doneMap,
+  currentStreak,
   onToggle,
   onRename,
   onTogglePin,
@@ -20,6 +22,7 @@ export function HabitRow({
   days: string[];
   today: string;
   doneMap: Record<string, boolean>;
+  currentStreak: number;
   onToggle: (habit: Habit, iso: string) => void;
   onRename: (habit: Habit, name: string) => void;
   onTogglePin: (habit: Habit) => void;
@@ -83,10 +86,17 @@ export function HabitRow({
             className="min-w-0 flex-1 truncate text-left text-sm font-medium"
           >
             {habit.name}
-            <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+            <span className="ml-1.5 hidden text-xs font-normal text-muted-foreground sm:inline">
               {habit.category}
             </span>
           </button>
+        )}
+
+        {currentStreak > 0 && !editing && (
+          <StreakBadge
+            count={currentStreak}
+            className="shrink-0 text-xs"
+          />
         )}
 
         <button

@@ -73,3 +73,18 @@ export function monthLabel(year: number, monthIndex: number): string {
 export function isoDateOf(timestamp: string): string {
   return timestamp.slice(0, 10);
 }
+
+/** Add (or subtract) whole days to an ISO date string. */
+export function addDays(iso: string, n: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return toISODate(new Date(y, m - 1, d + n));
+}
+
+/** Inclusive count of days from `a` to `b` (both ISO). 0 if b < a. */
+export function daysBetween(a: string, b: string): number {
+  if (b < a) return 0;
+  const [ay, am, ad] = a.split("-").map(Number);
+  const [by, bm, bd] = b.split("-").map(Number);
+  const ms = Date.UTC(by, bm - 1, bd) - Date.UTC(ay, am - 1, ad);
+  return Math.round(ms / 86_400_000) + 1;
+}
