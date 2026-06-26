@@ -117,7 +117,7 @@ export function HabitRow({
               aria-label={`${habit.name} on ${iso}${done ? " (done)" : ""}`}
               aria-pressed={done}
               className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-md text-xs transition-colors",
+                "flex h-6 w-6 items-center justify-center rounded-md text-xs transition-colors sm:h-7 sm:w-7",
                 isBeforeStart && "cursor-not-allowed bg-muted/40",
                 isFuture && "cursor-not-allowed opacity-40",
                 !locked &&

@@ -182,7 +182,7 @@ export function HabitGrid({
 
   // --- Render ---------------------------------------------------------------
 
-  const gridTemplate = `13rem repeat(${days.length}, 2rem)`;
+  const gridTemplate = `var(--label-col) repeat(${days.length}, var(--day-col))`;
 
   return (
     <div className="space-y-5">
