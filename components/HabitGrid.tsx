@@ -4,16 +4,23 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   isWeekend,
-  isoDateOf,
   monthDays as buildMonthDays,
+  monthLabel,
   todayISO,
   weekdayLetter,
 } from "@/lib/utils/dates";
+import {
+  computeHabitStat,
+  leaderboard,
+  monthProgress,
+  summarize,
+} from "@/lib/utils/stats";
 import type { Habit } from "@/lib/types";
 import { AddHabitForm } from "@/components/AddHabitForm";
 import { MonthNav } from "@/components/MonthNav";
 import { HabitRow } from "@/components/HabitRow";
 import { DeleteHabitDialog } from "@/components/DeleteHabitDialog";
+import { StatsBar } from "@/components/StatsBar";
 
 type CheckInMap = Record<string, Record<string, boolean>>;
 
@@ -55,17 +62,14 @@ export function HabitGrid({
     view.year === now.getFullYear() && view.monthIndex === now.getMonth();
   const canGoNext = !isCurrentMonth;
 
-  // Load this month's check-ins whenever the viewed month changes.
+  // Load ALL of the user's check-ins once. The grid renders only the visible
+  // month from this map, while streaks/stats use the full history.
   useEffect(() => {
     let cancelled = false;
-    const first = days[0];
-    const last = days[days.length - 1];
     supabase
       .from("check_ins")
       .select("habit_id, date, done")
       .eq("user_id", userId)
-      .gte("date", first)
-      .lte("date", last)
       .then(({ data }) => {
         if (cancelled || !data) return;
         const map: CheckInMap = {};
@@ -78,7 +82,7 @@ export function HabitGrid({
     return () => {
       cancelled = true;
     };
-  }, [supabase, userId, days]);
+  }, [supabase, userId]);
 
   // --- Mutations (optimistic) ----------------------------------------------
 
@@ -171,14 +175,35 @@ export function HabitGrid({
     [supabase],
   );
 
-  // --- Today's progress -----------------------------------------------------
+  // --- Live stats -----------------------------------------------------------
 
-  const todayStats = useMemo(() => {
-    if (!isCurrentMonth) return null;
-    const active = habits.filter((h) => isoDateOf(h.created_at) <= today);
-    const done = active.filter((h) => checkIns[h.id]?.[today]).length;
-    return { done, total: active.length };
-  }, [habits, checkIns, isCurrentMonth, today]);
+  const doneByHabit = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    for (const [habitId, dates] of Object.entries(checkIns)) {
+      map[habitId] = new Set(Object.keys(dates));
+    }
+    return map;
+  }, [checkIns]);
+
+  const stats = useMemo(
+    () =>
+      habits.map((h) =>
+        computeHabitStat(h, doneByHabit[h.id] ?? new Set(), today),
+      ),
+    [habits, doneByHabit, today],
+  );
+
+  const summary = useMemo(() => summarize(stats), [stats]);
+  const board = useMemo(() => leaderboard(stats), [stats]);
+  const month = useMemo(
+    () => monthProgress(habits, doneByHabit, view.year, view.monthIndex, today),
+    [habits, doneByHabit, view, today],
+  );
+  const streakByHabit = useMemo(() => {
+    const m: Record<string, number> = {};
+    for (const s of stats) m[s.habit.id] = s.current;
+    return m;
+  }, [stats]);
 
   // --- Render ---------------------------------------------------------------
 
@@ -189,14 +214,12 @@ export function HabitGrid({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <AddHabitForm onAdd={addHabit} />
         <div className="flex items-center gap-4">
-          {todayStats && (
-            <span className="text-sm text-muted-foreground">
-              Today:{" "}
-              <span className="font-medium text-foreground">
-                {todayStats.done}/{todayStats.total}
-              </span>
+          <span className="text-sm text-muted-foreground">
+            Today:{" "}
+            <span className="font-medium text-foreground">
+              {summary.todayDone}/{summary.todayTotal}
             </span>
-          )}
+          </span>
           <MonthNav
             year={view.year}
             monthIndex={view.monthIndex}
@@ -218,6 +241,15 @@ export function HabitGrid({
           />
         </div>
       </div>
+
+      {habits.length > 0 && (
+        <StatsBar
+          summary={summary}
+          month={month}
+          monthLabel={monthLabel(view.year, view.monthIndex)}
+          leaderboard={board}
+        />
+      )}
 
       {habits.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
@@ -263,6 +295,7 @@ export function HabitGrid({
                   days={days}
                   today={today}
                   doneMap={checkIns[habit.id] ?? {}}
+                  currentStreak={streakByHabit[habit.id] ?? 0}
                   onToggle={toggle}
                   onRename={renameHabit}
                   onTogglePin={togglePin}
