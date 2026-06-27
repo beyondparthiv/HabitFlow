@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   isWeekend,
@@ -53,6 +53,8 @@ export function HabitGrid({
     monthIndex: now.getMonth(),
   }));
   const [deleting, setDeleting] = useState<Habit | null>(null);
+  const todayHeaderRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const days = useMemo(
     () => buildMonthDays(view.year, view.monthIndex),
@@ -206,6 +208,21 @@ export function HabitGrid({
     return m;
   }, [stats]);
 
+  // When viewing the current month, scroll the grid horizontally so today is
+  // centered (important on phones, where only a few days fit). Scoped to the
+  // grid container so the page itself never jumps.
+  useEffect(() => {
+    if (!isCurrentMonth) return;
+    const container = scrollRef.current;
+    const cell = todayHeaderRef.current;
+    if (!container || !cell) return;
+    const cRect = container.getBoundingClientRect();
+    const tRect = cell.getBoundingClientRect();
+    const delta =
+      tRect.left - cRect.left - (container.clientWidth - cell.clientWidth) / 2;
+    container.scrollLeft += delta;
+  }, [isCurrentMonth, view, habits.length]);
+
   // --- Render ---------------------------------------------------------------
 
   const gridTemplate = `var(--label-col) repeat(${days.length}, var(--day-col))`;
@@ -249,7 +266,7 @@ export function HabitGrid({
         />
       </div>
 
-      <div className="overflow-x-auto rounded-xl border">
+      <div ref={scrollRef} className="overflow-x-auto rounded-xl border">
         <div className="min-w-max">
           {/* Header row */}
           <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
@@ -259,6 +276,7 @@ export function HabitGrid({
             {days.map((iso) => (
               <div
                 key={iso}
+                ref={iso === today ? todayHeaderRef : undefined}
                 className={`flex flex-col items-center border-b border-r py-1.5 text-[10px] leading-tight ${
                   isWeekend(iso) ? "bg-muted/40" : ""
                 } ${
