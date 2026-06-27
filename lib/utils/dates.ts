@@ -74,6 +74,12 @@ export function monthShort(year: number, monthIndex: number): string {
   return `${MONTH_NAMES[monthIndex].slice(0, 3)} '${String(year).slice(2)}`;
 }
 
+/** "Jun 27, 2026" from an ISO date string (deterministic — no locale/TZ drift). */
+export function formatLongDate(iso: string): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  return `${MONTH_NAMES[m - 1].slice(0, 3)} ${d}, ${y}`;
+}
+
 /** The day portion of a stored timestamp/timestamptz ("...T..." -> "YYYY-MM-DD"). */
 export function isoDateOf(timestamp: string): string {
   return timestamp.slice(0, 10);
