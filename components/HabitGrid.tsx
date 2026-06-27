@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import {
   isWeekend,
@@ -21,6 +21,7 @@ import { MonthNav } from "@/components/MonthNav";
 import { HabitRow } from "@/components/HabitRow";
 import { DeleteHabitDialog } from "@/components/DeleteHabitDialog";
 import { StatsBar } from "@/components/StatsBar";
+import { Onboarding } from "@/components/Onboarding";
 
 type CheckInMap = Record<string, Record<string, boolean>>;
 
@@ -52,6 +53,8 @@ export function HabitGrid({
     monthIndex: now.getMonth(),
   }));
   const [deleting, setDeleting] = useState<Habit | null>(null);
+  const todayHeaderRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   const days = useMemo(
     () => buildMonthDays(view.year, view.monthIndex),
@@ -205,111 +208,119 @@ export function HabitGrid({
     return m;
   }, [stats]);
 
+  // When viewing the current month, scroll the grid horizontally so today is
+  // centered (important on phones, where only a few days fit). Scoped to the
+  // grid container so the page itself never jumps.
+  useEffect(() => {
+    if (!isCurrentMonth) return;
+    const container = scrollRef.current;
+    const cell = todayHeaderRef.current;
+    if (!container || !cell) return;
+    const cRect = container.getBoundingClientRect();
+    const tRect = cell.getBoundingClientRect();
+    const delta =
+      tRect.left - cRect.left - (container.clientWidth - cell.clientWidth) / 2;
+    container.scrollLeft += delta;
+  }, [isCurrentMonth, view, habits.length]);
+
   // --- Render ---------------------------------------------------------------
 
   const gridTemplate = `var(--label-col) repeat(${days.length}, var(--day-col))`;
 
+  if (habits.length === 0) {
+    return (
+      <Onboarding onAdd={addHabit} />
+    );
+  }
+
   return (
     <div className="space-y-5">
+      <StatsBar
+        summary={summary}
+        month={month}
+        monthLabel={monthLabel(view.year, view.monthIndex)}
+        leaderboard={board}
+      />
+
+      {/* Tracker controls */}
       <div className="flex flex-wrap items-center justify-between gap-3">
         <AddHabitForm onAdd={addHabit} />
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
-            Today:{" "}
-            <span className="font-medium text-foreground">
-              {summary.todayDone}/{summary.todayTotal}
-            </span>
-          </span>
-          <MonthNav
-            year={view.year}
-            monthIndex={view.monthIndex}
-            canGoNext={canGoNext}
-            onPrev={() =>
-              setView((v) =>
-                v.monthIndex === 0
-                  ? { year: v.year - 1, monthIndex: 11 }
-                  : { ...v, monthIndex: v.monthIndex - 1 },
-              )
-            }
-            onNext={() =>
-              setView((v) =>
-                v.monthIndex === 11
-                  ? { year: v.year + 1, monthIndex: 0 }
-                  : { ...v, monthIndex: v.monthIndex + 1 },
-              )
-            }
-          />
-        </div>
+        <MonthNav
+          year={view.year}
+          monthIndex={view.monthIndex}
+          canGoNext={canGoNext}
+          onPrev={() =>
+            setView((v) =>
+              v.monthIndex === 0
+                ? { year: v.year - 1, monthIndex: 11 }
+                : { ...v, monthIndex: v.monthIndex - 1 },
+            )
+          }
+          onNext={() =>
+            setView((v) =>
+              v.monthIndex === 11
+                ? { year: v.year + 1, monthIndex: 0 }
+                : { ...v, monthIndex: v.monthIndex + 1 },
+            )
+          }
+        />
       </div>
 
-      {habits.length > 0 && (
-        <StatsBar
-          summary={summary}
-          month={month}
-          monthLabel={monthLabel(view.year, view.monthIndex)}
-          leaderboard={board}
-        />
-      )}
-
-      {habits.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-          <span className="mb-3 text-4xl">🌱</span>
-          <h2 className="text-lg font-medium">No habits yet</h2>
-          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
-            Add your first habit above to start tracking. Tap any day to mark it
-            done.
-          </p>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-lg border">
-          <div className="min-w-max">
-            {/* Header row */}
-            <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
-              <div className="sticky left-0 z-10 border-b border-r bg-card px-2 py-1.5 text-xs font-medium text-muted-foreground">
-                Habit
-              </div>
-              {days.map((iso) => (
-                <div
-                  key={iso}
-                  className={`flex flex-col items-center border-b border-r py-1 text-[10px] leading-tight ${
-                    isWeekend(iso) ? "bg-muted/30" : ""
-                  } ${iso === today ? "bg-primary/10 font-semibold" : ""}`}
-                >
-                  <span className="text-muted-foreground">
-                    {weekdayLetter(iso)}
-                  </span>
-                  <span>{Number(iso.slice(8, 10))}</span>
-                </div>
-              ))}
+      <div ref={scrollRef} className="overflow-x-auto rounded-xl border">
+        <div className="min-w-max">
+          {/* Header row */}
+          <div className="grid" style={{ gridTemplateColumns: gridTemplate }}>
+            <div className="sticky left-0 z-10 border-b border-r bg-card px-3 py-2 text-xs font-semibold text-muted-foreground">
+              Habit
             </div>
-
-            {/* Habit rows */}
-            {habits.map((habit) => (
+            {days.map((iso) => (
               <div
-                key={habit.id}
-                className="grid"
-                style={{ gridTemplateColumns: gridTemplate }}
+                key={iso}
+                ref={iso === today ? todayHeaderRef : undefined}
+                className={`flex flex-col items-center border-b border-r py-1.5 text-[10px] leading-tight ${
+                  isWeekend(iso) ? "bg-muted/40" : ""
+                } ${
+                  iso === today
+                    ? "bg-primary/15 font-bold text-primary"
+                    : ""
+                }`}
               >
-                <HabitRow
-                  habit={habit}
-                  days={days}
-                  today={today}
-                  doneMap={checkIns[habit.id] ?? {}}
-                  currentStreak={streakByHabit[habit.id] ?? 0}
-                  onToggle={toggle}
-                  onRename={renameHabit}
-                  onTogglePin={togglePin}
-                  onRequestDelete={setDeleting}
-                />
+                <span
+                  className={iso === today ? "" : "text-muted-foreground"}
+                >
+                  {weekdayLetter(iso)}
+                </span>
+                <span>{Number(iso.slice(8, 10))}</span>
               </div>
             ))}
           </div>
+
+          {/* Habit rows */}
+          {habits.map((habit) => (
+            <div
+              key={habit.id}
+              className="grid"
+              style={{ gridTemplateColumns: gridTemplate }}
+            >
+              <HabitRow
+                habit={habit}
+                days={days}
+                today={today}
+                doneMap={checkIns[habit.id] ?? {}}
+                currentStreak={streakByHabit[habit.id] ?? 0}
+                onToggle={toggle}
+                onRename={renameHabit}
+                onTogglePin={togglePin}
+                onRequestDelete={setDeleting}
+              />
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
       <p className="text-xs text-muted-foreground">
-        Double-click a name to rename · 📌 to pin · ✕ to archive or delete ·
-        grayed days are before the habit existed · future days are locked
+        Tip: double-click a name to rename · 📌 pin to top · ✕ archive or delete
+        · grayed days are before the habit existed · future days are locked
       </p>
 
       <DeleteHabitDialog

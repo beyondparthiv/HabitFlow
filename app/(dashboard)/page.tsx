@@ -17,18 +17,6 @@ export default async function TrackerPage() {
     .order("position", { ascending: true });
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Your habits</h1>
-        <p className="text-sm text-muted-foreground">
-          Build your streaks one day at a time.
-        </p>
-      </div>
-
-      <HabitGrid
-        initialHabits={(habits as Habit[]) ?? []}
-        userId={user!.id}
-      />
-    </div>
+    <HabitGrid initialHabits={(habits as Habit[]) ?? []} userId={user!.id} />
   );
 }
