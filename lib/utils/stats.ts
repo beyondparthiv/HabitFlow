@@ -2,6 +2,8 @@ import {
   daysBetween,
   isoDateOf,
   monthDays,
+  monthLabel,
+  monthShort,
 } from "@/lib/utils/dates";
 import { currentStreak, longestStreak } from "@/lib/utils/streaks";
 import type { Habit } from "@/lib/types";
@@ -108,6 +110,67 @@ export function monthProgress(
   }
 
   return { done, possible, rate: possible ? done / possible : 0 };
+}
+
+export interface MonthStat {
+  year: number;
+  monthIndex: number;
+  label: string; // "June 2026"
+  short: string; // "Jun '26"
+  done: number;
+  possible: number;
+  rate: number;
+}
+
+/**
+ * Completion per calendar month, from the earliest habit's creation month
+ * through the current month. Pass a single-habit list for a per-habit history.
+ */
+export function monthlyHistory(
+  habits: Habit[],
+  doneByHabit: Record<string, Set<string>>,
+  today: string,
+): MonthStat[] {
+  if (habits.length === 0) return [];
+
+  let earliest = isoDateOf(habits[0].created_at);
+  for (const h of habits) {
+    const d = isoDateOf(h.created_at);
+    if (d < earliest) earliest = d;
+  }
+
+  let y = Number(earliest.slice(0, 4));
+  let m = Number(earliest.slice(5, 7)) - 1;
+  const ty = Number(today.slice(0, 4));
+  const tm = Number(today.slice(5, 7)) - 1;
+
+  const out: MonthStat[] = [];
+  while (y < ty || (y === ty && m <= tm)) {
+    const mp = monthProgress(habits, doneByHabit, y, m, today);
+    out.push({
+      year: y,
+      monthIndex: m,
+      label: monthLabel(y, m),
+      short: monthShort(y, m),
+      ...mp,
+    });
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  return out;
+}
+
+/** The highest-completion month (ignoring months with no active days). */
+export function bestMonth(history: MonthStat[]): MonthStat | null {
+  let best: MonthStat | null = null;
+  for (const ms of history) {
+    if (ms.possible === 0) continue;
+    if (!best || ms.rate > best.rate) best = ms;
+  }
+  return best;
 }
 
 /** Habits ranked by completion rate (desc), then by current streak. */

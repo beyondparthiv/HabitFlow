@@ -69,6 +69,11 @@ export function monthLabel(year: number, monthIndex: number): string {
   return `${MONTH_NAMES[monthIndex]} ${year}`;
 }
 
+/** "Jun '26" style short label (for compact charts/axes). */
+export function monthShort(year: number, monthIndex: number): string {
+  return `${MONTH_NAMES[monthIndex].slice(0, 3)} '${String(year).slice(2)}`;
+}
+
 /** The day portion of a stored timestamp/timestamptz ("...T..." -> "YYYY-MM-DD"). */
 export function isoDateOf(timestamp: string): string {
   return timestamp.slice(0, 10);
