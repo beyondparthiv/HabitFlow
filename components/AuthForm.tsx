@@ -22,9 +22,8 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
-  // OTP verification step (signup, when email confirmation is enabled)
-  const [step, setStep] = useState<"form" | "otp">("form");
-  const [otp, setOtp] = useState("");
+  // After signup with email confirmation on, we show a "check your inbox" step.
+  const [step, setStep] = useState<"form" | "sent">("form");
 
   const isLogin = mode === "login";
 
@@ -57,35 +56,12 @@ export function AuthForm({ mode }: { mode: Mode }) {
           router.push("/");
           router.refresh();
         } else {
-          // Confirmation on — move to the OTP step.
-          setStep("otp");
-          setInfo(`We sent a 6-digit code to ${email}.`);
+          // Confirmation on — a confirmation link was emailed.
+          setStep("sent");
         }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong.");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    setError(null);
-    try {
-      const { error } = await supabase.auth.verifyOtp({
-        email,
-        token: otp.trim(),
-        type: "signup",
-      });
-      if (error) throw error;
-      router.push("/");
-      router.refresh();
-    } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Invalid or expired code.",
-      );
     } finally {
       setLoading(false);
     }
@@ -96,7 +72,7 @@ export function AuthForm({ mode }: { mode: Mode }) {
     setInfo(null);
     const { error } = await supabase.auth.resend({ type: "signup", email });
     if (error) setError(error.message);
-    else setInfo(`New code sent to ${email}.`);
+    else setInfo(`Confirmation link re-sent to ${email}.`);
   }
 
   async function handleGoogle() {
@@ -108,71 +84,40 @@ export function AuthForm({ mode }: { mode: Mode }) {
     if (error) setError(error.message);
   }
 
-  // ---- OTP verification step ----
-  if (step === "otp") {
+  // ---- "Check your inbox" step (after signup) ----
+  if (step === "sent") {
     return (
-      <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-1.5 text-center">
+      <div className="w-full max-w-sm space-y-6 text-center">
+        <div className="text-5xl">📬</div>
+        <div className="space-y-1.5">
           <h1 className="text-2xl font-semibold tracking-tight">
-            Verify your email
+            Confirm your email
           </h1>
           <p className="text-sm text-muted-foreground">
-            Enter the 6-digit code we sent to{" "}
-            <span className="font-medium text-foreground">{email}</span>.
+            We sent a confirmation link to{" "}
+            <span className="font-medium text-foreground">{email}</span>. Click
+            it to verify your account and finish signing up.
           </p>
         </div>
 
-        <form onSubmit={handleVerify} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="otp">Verification code</Label>
-            <Input
-              id="otp"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              required
-              maxLength={6}
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
-              placeholder="123456"
-              className="text-center text-lg tracking-[0.4em]"
-              autoFocus
-            />
-          </div>
+        {error && <p className="text-sm text-destructive">{error}</p>}
+        {info && <p className="text-sm text-primary">{info}</p>}
 
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          {info && <p className="text-sm text-primary">{info}</p>}
-
+        <div className="space-y-3">
           <Button
-            type="submit"
+            type="button"
+            variant="outline"
             className="w-full"
-            disabled={loading || otp.length < 6}
-          >
-            {loading ? "Verifying…" : "Verify & continue"}
-          </Button>
-        </form>
-
-        <div className="text-center text-sm text-muted-foreground">
-          Didn&apos;t get it?{" "}
-          <button
-            type="button"
             onClick={handleResend}
-            className="font-medium text-foreground underline"
           >
-            Resend code
-          </button>
-          <span className="mx-1">·</span>
-          <button
-            type="button"
-            onClick={() => {
-              setStep("form");
-              setOtp("");
-              setError(null);
-              setInfo(null);
-            }}
-            className="font-medium text-foreground underline"
-          >
-            Change email
-          </button>
+            Resend confirmation link
+          </Button>
+          <p className="text-sm text-muted-foreground">
+            Already confirmed?{" "}
+            <Link href="/login" className="font-medium text-foreground underline">
+              Log in
+            </Link>
+          </p>
         </div>
       </div>
     );
