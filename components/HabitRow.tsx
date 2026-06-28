@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { dayOfMonth } from "@/lib/utils/dates";
-import { isoDateOf } from "@/lib/utils/dates";
+import { dayOfMonth, habitStartISO } from "@/lib/utils/dates";
 import type { Habit } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { StreakBadge } from "@/components/StreakBadge";
@@ -31,7 +30,7 @@ export function HabitRow({
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(habit.name);
   const inputRef = useRef<HTMLInputElement>(null);
-  const startISO = isoDateOf(habit.created_at);
+  const startISO = habitStartISO(habit.created_at, today);
 
   useEffect(() => {
     if (editing) inputRef.current?.select();
