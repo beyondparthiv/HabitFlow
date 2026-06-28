@@ -113,6 +113,20 @@ export function AuthForm({ mode }: { mode: Mode }) {
             Resend confirmation link
           </Button>
           <p className="text-sm text-muted-foreground">
+            Wrong address?{" "}
+            <button
+              type="button"
+              onClick={() => {
+                setStep("form");
+                setError(null);
+                setInfo(null);
+              }}
+              className="font-medium text-foreground underline"
+            >
+              Change email
+            </button>
+          </p>
+          <p className="text-sm text-muted-foreground">
             Already confirmed?{" "}
             <Link href="/login" className="font-medium text-foreground underline">
               Log in
