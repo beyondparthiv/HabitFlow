@@ -22,6 +22,10 @@ export function AuthForm({ mode }: { mode: Mode }) {
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
 
+  // OTP verification step (signup, when email confirmation is enabled)
+  const [step, setStep] = useState<"form" | "otp">("form");
+  const [otp, setOtp] = useState("");
+
   const isLogin = mode === "login";
 
   async function handleSubmit(e: React.FormEvent) {
@@ -48,12 +52,14 @@ export function AuthForm({ mode }: { mode: Mode }) {
           },
         });
         if (error) throw error;
-        // If email confirmation is enabled, there is no active session yet.
         if (data.session) {
+          // Email confirmation is off — straight in.
           router.push("/");
           router.refresh();
         } else {
-          setInfo("Check your email to confirm your account, then log in.");
+          // Confirmation on — move to the OTP step.
+          setStep("otp");
+          setInfo(`We sent a 6-digit code to ${email}.`);
         }
       }
     } catch (err) {
@@ -61,6 +67,36 @@ export function AuthForm({ mode }: { mode: Mode }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+    try {
+      const { error } = await supabase.auth.verifyOtp({
+        email,
+        token: otp.trim(),
+        type: "signup",
+      });
+      if (error) throw error;
+      router.push("/");
+      router.refresh();
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Invalid or expired code.",
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResend() {
+    setError(null);
+    setInfo(null);
+    const { error } = await supabase.auth.resend({ type: "signup", email });
+    if (error) setError(error.message);
+    else setInfo(`New code sent to ${email}.`);
   }
 
   async function handleGoogle() {
@@ -72,6 +108,77 @@ export function AuthForm({ mode }: { mode: Mode }) {
     if (error) setError(error.message);
   }
 
+  // ---- OTP verification step ----
+  if (step === "otp") {
+    return (
+      <div className="w-full max-w-sm space-y-6">
+        <div className="space-y-1.5 text-center">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Verify your email
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Enter the 6-digit code we sent to{" "}
+            <span className="font-medium text-foreground">{email}</span>.
+          </p>
+        </div>
+
+        <form onSubmit={handleVerify} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="otp">Verification code</Label>
+            <Input
+              id="otp"
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              required
+              maxLength={6}
+              value={otp}
+              onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+              placeholder="123456"
+              className="text-center text-lg tracking-[0.4em]"
+              autoFocus
+            />
+          </div>
+
+          {error && <p className="text-sm text-destructive">{error}</p>}
+          {info && <p className="text-sm text-primary">{info}</p>}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={loading || otp.length < 6}
+          >
+            {loading ? "Verifying…" : "Verify & continue"}
+          </Button>
+        </form>
+
+        <div className="text-center text-sm text-muted-foreground">
+          Didn&apos;t get it?{" "}
+          <button
+            type="button"
+            onClick={handleResend}
+            className="font-medium text-foreground underline"
+          >
+            Resend code
+          </button>
+          <span className="mx-1">·</span>
+          <button
+            type="button"
+            onClick={() => {
+              setStep("form");
+              setOtp("");
+              setError(null);
+              setInfo(null);
+            }}
+            className="font-medium text-foreground underline"
+          >
+            Change email
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---- Login / signup form ----
   return (
     <div className="w-full max-w-sm space-y-6">
       <div className="space-y-1.5 text-center">
