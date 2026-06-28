@@ -1,6 +1,6 @@
 import {
   daysBetween,
-  isoDateOf,
+  habitStartISO,
   monthDays,
   monthLabel,
   monthShort,
@@ -28,7 +28,7 @@ export function computeHabitStat(
   doneDates: Set<string>,
   today: string,
 ): HabitStat {
-  const startISO = isoDateOf(habit.created_at);
+  const startISO = habitStartISO(habit.created_at, today);
   const activeToday = today >= startISO;
   const active = activeToday ? daysBetween(startISO, today) : 0;
 
@@ -100,7 +100,7 @@ export function monthProgress(
   let possible = 0;
 
   for (const habit of habits) {
-    const startISO = isoDateOf(habit.created_at);
+    const startISO = habitStartISO(habit.created_at, today);
     const doneDates = doneByHabit[habit.id];
     for (const iso of allDays) {
       if (iso < startISO || iso > today) continue; // outside active range
@@ -133,9 +133,9 @@ export function monthlyHistory(
 ): MonthStat[] {
   if (habits.length === 0) return [];
 
-  let earliest = isoDateOf(habits[0].created_at);
+  let earliest = habitStartISO(habits[0].created_at, today);
   for (const h of habits) {
-    const d = isoDateOf(h.created_at);
+    const d = habitStartISO(h.created_at, today);
     if (d < earliest) earliest = d;
   }
 

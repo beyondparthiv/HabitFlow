@@ -85,6 +85,19 @@ export function isoDateOf(timestamp: string): string {
   return timestamp.slice(0, 10);
 }
 
+/**
+ * A habit's effective start date, clamped so it's never after "today".
+ *
+ * created_at is stored in UTC, but "today" is the user's local date. Near
+ * midnight in timezones behind UTC, a habit created now gets a UTC date of
+ * *tomorrow* — which would otherwise lock today's cell and zero out stats.
+ * Clamping to today fixes that without affecting genuinely older habits.
+ */
+export function habitStartISO(createdAt: string, today: string): string {
+  const created = isoDateOf(createdAt);
+  return created < today ? created : today;
+}
+
 /** Add (or subtract) whole days to an ISO date string. */
 export function addDays(iso: string, n: number): string {
   const [y, m, d] = iso.split("-").map(Number);
